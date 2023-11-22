@@ -1,3 +1,21 @@
+const data = [
+  {
+    a: 1,
+    x: null,
+    k: [1, 2],
+    b: 2,
+    c: {
+      d: 1,
+      e: {
+        s: {
+          f: {
+            v: 4,
+          },
+        },
+      },
+    },
+  },
+];
 const deepClone = (data) => {
   if (data === null) return null;
   if (Array.isArray(data)) {
@@ -18,6 +36,9 @@ const deepClone = (data) => {
   return data;
 };
 const result = deepClone(data);
+console.log(result[0].k === data[0].k);
+console.log(result[0].c === data[0].c);
+console.log(result[0].c.e.s === data[0].c.e.s);
 
 const ads = [
   { name: "ad1", price: 1.8, show: 0 },
@@ -90,93 +111,7 @@ const ChainWrapper = (ads) => {
     }
   };
 };
-const Binary = (ads, left, right, prev) => {
-  let mid = Math.floor((right - left) / 2);
-  mid = mid < left ? left : mid;
-  if (left === mid) {
-    const op1 = ads[left].price - ads[left].show / ads[left].price;
-    const op2 = ads[right].price - ads[right].show / ads[right].price;
-    let index = op1 > op2 ? left : right;
 
-    if (prev !== -1) {
-      const current = ads[index].price - ads[index].show / ads[index].price;
-      const prevVal = ads[prev].price - ads[prev].show / ads[prev].price;
-      index = current > prevVal ? index : prev;
-    }
-    return index;
-  }
-  if (right <= left) {
-    if (prev !== -1) {
-      const current = ads[left].price - ads[left].show / ads[left].price;
-      const prevVal = ads[prev].price - ads[prev].show / ads[prev].price;
-      let index = current > prevVal ? index : prev;
-      return index;
-    }
-    return left;
-  }
-  if (ads[left].show === ads[right].show) {
-    if (prev !== -1) {
-      const current = ads[left].price - ads[left].show / ads[left].price;
-      const prevVal = ads[prev].price - ads[prev].show / ads[prev].price;
-      let index = current > prevVal ? index : prev;
-      return index;
-    }
-    return left;
-  }
-  if (ads[left].show === ads[mid].show) {
-    let res = ads[left].price - ads[left].value / ads[left].price;
-    let target = left;
-    const newTarget = Binary(ads, mid + 1, right, target);
-    const newRes =
-      ads[newTarget].price - ads[newTarget].value / ads[newTarget].price;
-    if (newRes > res) {
-      target = newTarget;
-      res = newRes;
-    }
-    if (prev !== -1) {
-      const prevVal = ads[prev].price - ads[prev].show / ads[prev].price;
-      let index = res > prevVal ? res : prev;
-      return index;
-    } else return target;
-  }
-  if (ads[right].show === ads[mid].show) {
-    let res = ads[mid].price - ads[mid].value / ads[mid].price;
-    let target = mid;
-    const newTarget = Binary(ads, left, mid, target);
-    const newRes =
-      ads[newTarget].price - ads[newTarget].value / ads[newTarget].price;
-    if (newRes > res) {
-      target = newTarget;
-      res = newRes;
-    }
-    if (prev !== -1) {
-      const prevVal = ads[prev].price - ads[prev].show / ads[prev].price;
-      let index = res > prevVal ? res : prev;
-      return index;
-    } else return target;
-  }
-  let index = -1;
-  let result = -Infinity;
-  for (let i = left; i <= right; i++) {
-    const res = ads[i].price - ads[i].show / ads[i].price;
-    if (res > result) {
-      result = res;
-      index = i;
-    }
-  }
-  if (prev !== -1) {
-    const current = ads[index].price - ads[index].show / ads[index].price;
-    const prevVal = ads[prev].price - ads[prev].show / ads[prev].price;
-    let newIndex = current > prevVal ? index : prev;
-    return newIndex;
-  } else {
-    return index;
-  }
-};
-const spreadTrafficByPriceBinary = (ads, left, right) => {
-  let index = Binary(ads, left, right, -1);
-  ads[index].show++;
-};
 function spreadTrafficByPrice(ads) {
   let index = 0;
   let max = -Infinity;
@@ -202,11 +137,50 @@ const SpreadEvenly = (ads) => {
   }
   ads[minIndex].show++;
 };
+const BinaryWrapper = (ads) => {
+  const priceSum = ads.reduce((acc, item) => {
+    return acc + item.price;
+  }, 0);
+  let sum = 0;
+  return function (ads) {
+    let left = 0;
+    let right = ads.length - 1;
+    let iterations = ads.length;
+    let index;
+    while (iterations) {
+      index = left + Math.floor((right - left) / 2);
+      let prev = sum > 0 ? sum : 1;
+      const ratioLeft = ads[left].price / priceSum - ads[left].show / prev;
+      const ratioRight = ads[right].price / priceSum - ads[right].show / prev;
+      const ratio = ads[index].price / priceSum - ads[index].show / prev;
+      if (right - left === 1) {
+        index = ratioRight > ratioLeft ? right : left;
+        break;
+      }
+      if (ratioLeft >= ratio && ratioLeft > ratioRight) {
+        right = index;
+        iterations /= 2;
+        continue;
+      }
+      if (ratioRight >= ratio) {
+        left = index;
+        iterations /= 2;
+        continue;
+      }
+      break;
+    }
+    ads[index].show++;
+    sum++;
+    return;
+  };
+};
+const Binary = BinaryWrapper(ads);
 const Random = RandomWrapper(ads);
 const Robin = RobinWrapper(ads);
 const Chain = ChainWrapper(ads);
-for (let i = 0; i < 100; i++) {
-  SpreadEvenly(ads);
+for (let i = 0; i < 1000000; i++) {
+  // SpreadEvenly(ads);
+  Binary(ads);
   //   Chain(ads);
   //   Robin(ads);
   //   Random(ads);
