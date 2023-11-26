@@ -17,23 +17,43 @@ const data = [
   },
 ];
 const deepClone = (data) => {
-  if (data === null) return null;
-  if (Array.isArray(data)) {
-    const result = [];
-    for (let item of data) {
-      result.push(deepClone(item));
-    }
-    return result;
+  const keys = Object.keys(data);
+  const result = Array.isArray(data) ? [] : {};
+  for (let i = 0; i < keys.length; i++) {
+    const mainItem = data[keys[i]];
+    if (typeof mainItem === "object") {
+      const container = Array.isArray(mainItem) ? [] : {};
+      const tree = [{ index: 0, container, item: mainItem }];
+      let prev = null;
+      while (tree.length) {
+        const current = tree.pop();
+        const subContainer = current.container;
+        let itemKeys = Object.keys(current.item);
+        let index = current.index;
+        while (index < itemKeys.length) {
+          const value = current.item[itemKeys[index]];
+          if (typeof value === "object" && value !== null) {
+            if (prev === null) {
+              const newContainer = Array.isArray(value) ? [] : {};
+              tree.push(
+                { index, container: subContainer, item: current.item },
+                { index: 0, container: newContainer, item: value }
+              );
+              break;
+            } else {
+              const key = itemKeys[index];
+              subContainer[key] = prev;
+              prev = null;
+            }
+          } else subContainer[itemKeys[index]] = value;
+          index++;
+          prev = index === itemKeys.length ? subContainer : prev;
+        }
+      }
+      result[keys[i]] = container;
+    } else result[keys[i]] = mainItem;
   }
-  if (typeof data === "object") {
-    const result = {};
-    const keys = Object.keys(data);
-    for (let key of keys) {
-      result[key] = deepClone(data[key]);
-    }
-    return result;
-  }
-  return data;
+  return result;
 };
 const result = deepClone(data);
 console.log(result[0].k === data[0].k);
