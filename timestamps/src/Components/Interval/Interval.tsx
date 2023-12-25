@@ -55,7 +55,6 @@ interface IGroup {
   width: number;
 }
 const Group = styled.div<IGroup>`
-  border: 1px solid red;
   width: ${(props) => "calc(" + props.width + "%)"};
   min-width: ${(props) => 18 + props.leng * 8}px;
   display: flex;
