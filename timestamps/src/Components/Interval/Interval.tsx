@@ -1,61 +1,63 @@
 import React from "react";
-import { TimeStampProp } from "../Main/interafces";
+import { DataItemProps } from "../Main/interafces";
+import { Stamp } from "../Stamp/Stamp";
 import styled from "styled-components";
-const Interval = ({ TimeStamp }: { TimeStamp: TimeStampProp }) => {
-  const from = Date.parse(TimeStamp.from);
-  const to = Date.parse(TimeStamp.to);
+const Interval = ({ TimeStamp }: { TimeStamp: DataItemProps }) => {
   const options: any = {
     hour: "numeric",
     minute: "numeric",
     second: "numeric",
   };
+
   const formatter = Intl.DateTimeFormat("RU", options);
-  const text = formatter.formatRange(from, to);
-  const [isShown, setIsShown] = React.useState<boolean>(false);
-  return (
-    <Stamp
-      onMouseEnter={() => {
-        setIsShown(true);
-      }}
-      onMouseLeave={() => {
-        setIsShown(false);
-      }}
-      width={TimeStamp.width}
-      offset={TimeStamp.offset}
-      left={TimeStamp.left}
-    >
-      <Info isShown={isShown}>
-        <p>{text}</p>
-      </Info>
-    </Stamp>
-  );
+  let Time = "";
+  if (!Array.isArray(TimeStamp) && !TimeStamp.isSpace) {
+    Time = formatter.formatRange(
+      Date.parse(TimeStamp.from),
+      Date.parse(TimeStamp.to)
+    );
+  }
+  {
+    if (Array.isArray(TimeStamp)) {
+      return (
+        <Group leng={TimeStamp.length} width={TimeStamp.width || 0}>
+          {TimeStamp.map((item, index) => {
+            const from = Date.parse(item.from);
+            const to = Date.parse(item.to);
+            const text = formatter.formatRange(from, to);
+            const devider = TimeStamp.width || 1;
+            const itemWidth = (item.width * 100) / devider;
+            return (
+              <Stamp
+                index={index}
+                width={itemWidth}
+                isSpace={item.isSpace}
+                info={text}
+              ></Stamp>
+            );
+          })}
+        </Group>
+      );
+    } else {
+      return (
+        <Stamp
+          index={0}
+          width={TimeStamp.width || 0}
+          isSpace={TimeStamp.isSpace || false}
+          info={Time}
+        ></Stamp>
+      );
+    }
+  }
 };
-
-export default Interval;
-interface Stamp {
-  left: number;
+interface IGroup {
+  leng: number;
   width: number;
-  offset: number;
 }
-const Stamp = styled.div<Stamp>`
-  border-radius: 30px;
-  background-color: aquamarine;
-  height: 36px;
-  width: ${(props) => props.width + "%"};
-  min-width: 36px;
-
-  position: absolute;
-  left: ${(props) => props.left}%;
-  transform: ${(props) => "translateX(-" + props.offset + "px)"};
-  border: 1px solid #000;
+const Group = styled.div<IGroup>`
+  border: 1px solid red;
+  width: ${(props) => "calc(" + props.width + "%)"};
+  min-width: ${(props) => 18 + props.leng * 8}px;
+  display: flex;
 `;
-const Info = styled.div<any>`
-  background-color: #fff;
-  border: 1px solid #000;
-  position: absolute;
-  top: -100px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: ${(props) => (props.isShown ? "block" : "none")};
-  text-align: center;
-`;
+export default Interval;

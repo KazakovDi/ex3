@@ -1,9 +1,8 @@
-export type TimeStamp = {
+export interface RawData {
   from: string;
   to: string;
-};
-export interface TimeStampProp extends TimeStamp {
-  width: number;
-  left: number;
-  offset: number;
+}
+export interface DataItemProps extends RawData {
+  isSpace?: boolean;
+  width?: number;
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import { TimeStamp, TimeStampProp } from "./interafces";
+import { RawData, DataItemProps } from "./interafces";
 import { styled } from "styled-components";
 import Bar from "../Bar/Bar";
 const dateObj = new Date();
@@ -10,7 +10,7 @@ const options: Intl.DateTimeFormatOptions = {
 };
 const DateFormatter = Intl.DateTimeFormat("ru-RU", options);
 const date = DateFormatter.format(dateObj);
-const data: TimeStamp[] = [
+const data: RawData[] = [
   {
     from: "2023-05-30T05:56:28+00:00",
     to: "2023-05-30T05:57:10+00:00",
@@ -57,25 +57,56 @@ const data: TimeStamp[] = [
   },
 ];
 const base = new Date("2023-05-30");
-const properties: TimeStampProp[] = [];
-for (let i = data.length - 1; i >= 0; i--) {
-  const item = data[i];
-  const from = Date.parse(item.from) - base.getTime();
+const beginMargin =
+  ((Date.parse(data[0].from) - Date.parse(base.toISOString())) * 100) /
+  86400000;
+const result: DataItemProps[] = [
+  {
+    from: "",
+    to: "",
+    width: beginMargin,
+    isSpace: true,
+  },
+  {
+    ...data[0],
+    width:
+      ((Date.parse(data[0].to) - Date.parse(data[0].from)) * 100) / 86400000,
+    isSpace: false,
+  },
+];
+for (let i = 1; i < data.length; i++) {
+  const item: DataItemProps = { ...data[i], width: 0, isSpace: false };
+  const prev = data[i - 1];
+  const min15 = 900000;
+  const diff = Date.parse(item.from) - Date.parse(prev.to);
   const width =
     ((Date.parse(item.to) - Date.parse(item.from)) * 100) / 86400000;
-  const left = (from * 100) / 86400000;
-  if (i === data.length - 1)
-    properties.unshift({ width, offset: 0, left, ...item });
-  else {
-    const prevRes = properties[0];
-    if (prevRes?.left !== undefined && prevRes?.left - left <= 6)
-      properties.unshift({
-        width,
-        offset: 12 + prevRes.offset,
-        left,
-        ...item,
-      });
-    else properties.unshift({ width, offset: 0, left, ...item });
+  console.log(i, diff < min15);
+  item.width = width;
+  if (diff < min15) {
+    const resItem = result.pop();
+    if (Array.isArray(resItem)) {
+      resItem.push(item);
+      resItem.to = item.to;
+      resItem.width = resItem.reduce((acc, item) => {
+        return acc + item.width;
+      }, 0);
+      result.push(resItem);
+    } else {
+      const newResultItem: any = [resItem, item];
+      newResultItem.from = resItem?.from;
+      newResultItem.to = item.from;
+      newResultItem.width =
+        ((Date.parse(newResultItem.to) - Date.parse(newResultItem.from)) *
+          100) /
+        86400000;
+      result.push(newResultItem);
+    }
+  } else {
+    const resItem = result.pop();
+    const spaceWidth = (diff * 100) / 86400000;
+    const space = { width: spaceWidth, isSpace: true, from: "", to: "" };
+    result.push(resItem as DataItemProps, space, item);
   }
 }
 const Main = () => {
@@ -85,7 +116,7 @@ const Main = () => {
         <h4>{date}</h4>
         <p>{data.length} visits</p>
       </Stats>
-      <Bar data={properties}></Bar>
+      <Bar data={result}></Bar>
     </div>
   );
 };
