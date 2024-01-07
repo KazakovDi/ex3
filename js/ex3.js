@@ -16,61 +16,60 @@ const data = [
     },
   },
 ];
+// Убрал лишний цикл
 const deepClone = (data) => {
-  const keys = Object.keys(data);
   const result = Array.isArray(data) ? [] : {};
-  for (let i = 0; i < keys.length; i++) {
-    const mainItem = data[keys[i]];
-    if (typeof mainItem === "object") {
-      const container = Array.isArray(mainItem) ? [] : {};
-      const tree = [{ index: 0, container, item: mainItem }];
-      let prev = null;
-      while (tree.length) {
-        const current = tree.pop();
-        const subContainer = current.container;
-        let itemKeys = Object.keys(current.item);
-        let index = current.index;
-        while (index < itemKeys.length) {
-          const value = current.item[itemKeys[index]];
-          if (typeof value === "object" && value !== null) {
-            if (prev === null) {
-              const newContainer = Array.isArray(value) ? [] : {};
-              tree.push(
-                { index, container: subContainer, item: current.item },
-                { index: 0, container: newContainer, item: value }
-              );
-              break;
-            } else {
-              const key = itemKeys[index];
-              subContainer[key] = prev;
-              prev = null;
-            }
-          } else subContainer[itemKeys[index]] = value;
-          index++;
-          prev = index === itemKeys.length ? subContainer : prev;
-        }
-      }
-      result[keys[i]] = container;
-    } else result[keys[i]] = mainItem;
+  const keys = Object.keys(data);
+  const queue = [[result, data]];
+  while (queue.length && keys.length) {
+    const [res, base] = queue.shift();
+    const key = keys.shift();
+    const item = base[key];
+    if (typeof item === "object" && item !== null) {
+      const newKeys = Object.keys(item);
+      res[key] = Array.isArray(item) ? [] : {};
+      let counter = 0;
+      do {
+        queue.unshift([res[key], item]);
+        counter++;
+      } while (counter < newKeys.length);
+      keys.unshift(...newKeys);
+    } else {
+      res[key] = item;
+      if (keys.length) queue.push([res, base]);
+    }
   }
   return result;
 };
+
 const result = deepClone(data);
+console.log(result);
 console.log(result[0].k === data[0].k);
 console.log(result[0].c === data[0].c);
 console.log(result[0].c.e.s === data[0].c.e.s);
 
+// Добавил разные ads для тестов
 const ads = [
   { name: "ad1", price: 1.8, show: 0 },
   { name: "ad2", price: 1.55, show: 0 },
   { name: "ad3", price: 1.13, show: 0 },
   { name: "ad4", price: 0.48, show: 0 },
 ];
+const ads1 = [
+  { name: "ad1", price: 1, show: 0 },
+  { name: "ad2", price: 0.5, show: 0 },
+];
+const ads2 = [
+  { name: "ad1", price: 1, show: 0 },
+  { name: "ad2", price: 1, show: 0 },
+  { name: "ad2", price: 1, show: 0 },
+];
 const RobinWrapper = (ads) => {
   let priceSum = 0;
   let sum = 0;
   for (let i = 0; i < ads.length; i++) {
     priceSum += ads[i].price;
+    sum += ads[i].show;
   }
   return function (ads) {
     let min = Infinity;
@@ -93,10 +92,18 @@ const RandomWrapper = (ads) => {
   let sumValue = 0;
   for (let i = 0; i < ads.length; i++) {
     sum += ads[i].price;
+    sumValue += ads[i].show;
   }
   return function (ads) {
-    while (true) {
+    let counter = 0;
+    // Убрал бесконечный цикл
+    while (counter < ads.length) {
       let index = Math.floor(Math.random() * ads.length);
+      if (counter === ads.length - 1) {
+        ads[index].show++;
+        sumValue++;
+        break;
+      }
       const pricePart = ads[index].price / sum;
       let valuePrice = ads[index].show / sumValue || 0;
       if (valuePrice === Infinity) valuePrice = 0;
@@ -105,17 +112,22 @@ const RandomWrapper = (ads) => {
         sumValue++;
         break;
       }
+      counter++;
     }
   };
 };
 const ChainWrapper = (ads) => {
+  let sumValue = 0;
   const sumPrice = ads.reduce((acc, item) => {
+    sumValue += item.show;
     return acc + item.price;
   }, 0);
-  let sumValue = 0;
+
   return function (ads) {
     let index = 0;
-    while (true) {
+    let counter = 0;
+    // Убрал бесконечный цикл
+    while (counter < ads.length) {
       if (ads[index].price / sumPrice <= ads[index].show / sumValue) {
         if (index === ads.length - 1) {
           ads[0].show++;
@@ -128,6 +140,7 @@ const ChainWrapper = (ads) => {
         sumValue++;
         break;
       }
+      counter++;
     }
   };
 };
@@ -153,43 +166,52 @@ const SpreadEvenly = (ads) => {
     if (ads[i].show < min) {
       min = ads[i].show;
       minIndex = i;
+      break;
     }
   }
   ads[minIndex].show++;
 };
 const BinaryWrapper = (ads) => {
+  let sum = 0;
   const priceSum = ads.reduce((acc, item) => {
+    sum += item.show;
     return acc + item.price;
   }, 0);
-  let sum = 0;
   return function (ads) {
+    // Байнери несколько дней мучал, алгоритм покороче так и не придумал
     let left = 0;
     let right = ads.length - 1;
     let iterations = ads.length;
-    let index;
-    while (iterations) {
-      index = left + Math.floor((right - left) / 2);
-      let prev = sum > 0 ? sum : 1;
-      const ratioLeft = ads[left].price / priceSum - ads[left].show / prev;
-      const ratioRight = ads[right].price / priceSum - ads[right].show / prev;
-      const ratio = ads[index].price / priceSum - ads[index].show / prev;
-      if (right - left === 1) {
-        index = ratioRight > ratioLeft ? right : left;
-        break;
+    let target = 0;
+    let val = Infinity;
+    while (iterations >= 1) {
+      let middle = left + Math.floor((right - left) / 2);
+      let centerVal = Math.abs(
+        ads[middle].price / priceSum - (ads[middle].show + 1) / (sum + 1)
+      );
+      let leftVal = Math.abs(
+        ads[left].price / priceSum - (ads[left].show + 1) / (sum + 1)
+      );
+      let rightVal = Math.abs(
+        ads[right].price / priceSum - (ads[right].show + 1) / (sum + 1)
+      );
+      if (leftVal < val) {
+        val = leftVal;
+        target = left;
       }
-      if (ratioLeft >= ratio && ratioLeft > ratioRight) {
-        right = index;
+      if (rightVal < val) {
+        val = rightVal;
+        target = right;
+      }
+      if (Math.abs(centerVal - leftVal) > Math.abs(centerVal - rightVal)) {
         iterations /= 2;
-        continue;
-      }
-      if (ratioRight >= ratio) {
-        left = index;
+        right = middle;
+      } else {
         iterations /= 2;
-        continue;
+        left = middle;
       }
-      break;
     }
-    ads[index].show++;
+    ads[target].show++;
     sum++;
     return;
   };
@@ -198,13 +220,12 @@ const Binary = BinaryWrapper(ads);
 const Random = RandomWrapper(ads);
 const Robin = RobinWrapper(ads);
 const Chain = ChainWrapper(ads);
-for (let i = 0; i < 1000000; i++) {
+for (let i = 0; i < 100; i++) {
   // SpreadEvenly(ads);
   Binary(ads);
-  //   Chain(ads);
+  // Chain(ads);
   //   Robin(ads);
-  //   Random(ads);
-  //   spreadTrafficByPrice(ads);
-  //   spreadTrafficByPriceBinary(ads, 0, ads.length - 1);
+  // Random(ads);
+  // spreadTrafficByPrice(ads);
 }
 console.log(performance.now(), ads);

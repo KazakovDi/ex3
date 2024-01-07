@@ -3,6 +3,7 @@ import { RawData, DataItemProps } from "./interafces";
 import { styled } from "styled-components";
 import Bar from "../Bar/Bar";
 const dateObj = new Date();
+const hours24: number = 86400000;
 const options: Intl.DateTimeFormatOptions = {
   weekday: "short",
   day: "numeric",
@@ -37,29 +38,17 @@ const data: RawData[] = [
   },
   {
     from: "2023-05-30T16:50:26+00:00",
-    to: "2023-05-30T16:50:49+00:00",
-  },
-  {
-    from: "2023-05-30T17:03:12+00:00",
-    to: "2023-05-30T17:04:24+00:00",
-  },
-  {
-    from: "2023-05-30T17:05:11+00:00",
-    to: "2023-05-30T17:05:55+00:00",
-  },
-  {
-    from: "2023-05-30T19:29:46+00:00",
-    to: "2023-05-30T19:31:04+00:00",
-  },
-  {
-    from: "2023-05-30T20:42:28+00:00",
-    to: "2023-05-30T20:43:31+00:00",
+    to: "2023-05-30T21:50:49+00:00",
   },
 ];
-const base = new Date("2023-05-30");
+const BaseDateRegex =
+  /20[0-9]{2}-((([1-9]|1[012])-0[1-9])|((0[1-9]|1[012])-1[0-9])|(((?:02)-2[0-8]|(0[^2]|1[012])-2[0-9]))|(((0[^2]|11)-30)|(0[1357]|1[02])-31))/;
+const DateStringMark = data[0].from.match(BaseDateRegex) || [""];
+
+const base = new Date(DateStringMark[0]);
+console.log("base", base);
 const beginMargin =
-  ((Date.parse(data[0].from) - Date.parse(base.toISOString())) * 100) /
-  86400000;
+  ((Date.parse(data[0].from) - Date.parse(base.toISOString())) * 100) / hours24;
 const result: DataItemProps[] = [
   {
     from: "",
@@ -70,7 +59,7 @@ const result: DataItemProps[] = [
   {
     ...data[0],
     width:
-      ((Date.parse(data[0].to) - Date.parse(data[0].from)) * 100) / 86400000,
+      ((Date.parse(data[0].to) - Date.parse(data[0].from)) * 100) / hours24,
     isSpace: false,
   },
 ];
@@ -79,8 +68,7 @@ for (let i = 1; i < data.length; i++) {
   const prev = data[i - 1];
   const min15 = 900000;
   const diff = Date.parse(item.from) - Date.parse(prev.to);
-  const width =
-    ((Date.parse(item.to) - Date.parse(item.from)) * 100) / 86400000;
+  const width = ((Date.parse(item.to) - Date.parse(item.from)) * 100) / hours24;
   console.log(i, diff < min15);
   item.width = width;
   if (diff < min15) {
@@ -99,12 +87,12 @@ for (let i = 1; i < data.length; i++) {
       newResultItem.width =
         ((Date.parse(newResultItem.to) - Date.parse(newResultItem.from)) *
           100) /
-        86400000;
+        hours24;
       result.push(newResultItem);
     }
   } else {
     const resItem = result.pop();
-    const spaceWidth = (diff * 100) / 86400000;
+    const spaceWidth = (diff * 100) / hours24;
     const space = { width: spaceWidth, isSpace: true, from: "", to: "" };
     result.push(resItem as DataItemProps, space, item);
   }
